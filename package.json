@@ -1,0 +1,16 @@
+{
+  "name": "neurodraft",
+  "private": true,
+  "workspaces": [
+    "app",
+    "landing"
+  ],
+  "scripts": {
+    "dev:app": "npm run dev --workspace=app",
+    "dev:landing": "npm run dev --workspace=landing",
+    "build:app": "npm run build --workspace=app",
+    "build:landing": "npm run build --workspace=landing",
+    "lint:app": "npm run lint --workspace=app",
+    "lint:landing": "npm run lint --workspace=landing"
+  }
+}
