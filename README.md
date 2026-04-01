@@ -421,6 +421,6 @@ NeuroDraft uses TRIBE v2 as the scientific basis for its scoring system — spec
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Outfit&weight=600&size=18&pause=2000&color=A855F7&center=true&vCenter=true&width=600&lines=NeuroDraft+is+not+affiliated+with+Meta.;TRIBE+v2+is+Meta+research.;NeuroDraft+is+an+independent+product.;Built+with+%E2%9D%A4%EF%B8%8F+by+Praful+Reddy" alt="Footer" />
+<img src="https://readme-typing-svg.demolab.com?font=Outfit&weight=600&size=18&pause=2000&color=A855F7&center=true&vCenter=true&width=600&lines=NeuroDraft+is+not+affiliated+with+Meta.;TRIBE+v2+is+Meta+research.;NeuroDraft+is+an+independent+product.;Built+by+Praful+Reddy" alt="Footer" />
 
 </div>
