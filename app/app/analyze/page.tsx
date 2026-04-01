@@ -15,7 +15,7 @@ import { FloatingActions } from "@/components/ui/FloatingActions";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { Button } from "@/components/ui/button";
 import { LANDING_URL } from "@/lib/config";
-import { createAnalysisPdfReport, downloadPdf, getPdfFileName } from "@/lib/generate-pdf";
+import { createAnalysisPdfReport, generatePDF, getPdfFileName } from "@/lib/generate-pdf";
 import { usePipelineStore } from "@/lib/pipeline-store";
 
 function SectionHeading(props: { description: string; title: string }): JSX.Element {
@@ -63,7 +63,7 @@ export default function AnalyzePage(): JSX.Element {
         insights
       });
       const filename = getPdfFileName(report.title, prediction?.overall.neural_grade);
-      await downloadPdf(report, filename);
+      await generatePDF(report, filename);
     } finally {
       setIsDownloadingPdf(false);
     }

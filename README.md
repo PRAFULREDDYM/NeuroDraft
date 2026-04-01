@@ -1,287 +1,426 @@
-# NeuroDraft
+<div align="center">
 
-**Know how your ad lands on the brain — before you spend a dollar on production.**
+<img src="https://readme-typing-svg.demolab.com?font=Outfit&weight=800&size=42&pause=1000&color=A855F7&center=true&vCenter=true&width=700&lines=NeuroDraft;Know+How+Your+Ad+Lands+on+the+Brain;Before+You+Spend+a+Dollar." alt="NeuroDraft" />
 
-NeuroDraft is an AI-powered creative intelligence tool that takes your ad script and returns a predicted neural engagement report in about 30 seconds. It tells you which scenes will hold attention, which ones lose the viewer, what emotion each beat triggers, and exactly what to rewrite to make the campaign stronger.
+<br/>
 
-It is built on TRIBE v2 — a foundation model released by Meta's AI research team in March 2025, trained on over 1,000 hours of fMRI brain scans from 720 subjects. NeuroDraft wraps that science into a workflow any creative team can use.
+<p align="center">
+  <strong>AI-powered creative intelligence — predict neural engagement from your ad script in ~30 seconds.</strong><br/>
+  Built on <a href="https://ai.meta.com/research/publications/brain-bench/">TRIBE v2</a> · Powered by Groq + Gemini · Next.js 15
+</p>
+
+<br/>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js" />
+  <img src="https://img.shields.io/badge/Groq-LLaMA_3-F54F3F?style=for-the-badge&logo=groq" />
+  <img src="https://img.shields.io/badge/Gemini-API-4285F4?style=for-the-badge&logo=google" />
+  <img src="https://img.shields.io/badge/TRIBE_v2-Meta_AI-0467DF?style=for-the-badge&logo=meta" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript" />
+</p>
+
+<br/>
+
+![Hero Section](docs/screenshots/01_hero.png)
+
+</div>
 
 ---
 
-## What it does
+## ✨ What is NeuroDraft?
 
-When you paste an ad script into NeuroDraft, six AI agents fire simultaneously:
+NeuroDraft is an AI-powered creative intelligence tool that takes your ad script and returns a **predicted neural engagement report** in about 30 seconds. It tells you:
 
-1. **Script Expander** — reads your script and breaks it into structured scenes with timing, emotional arc, voiceover, and camera direction
-2. **Scene Director** — writes a production-ready visual brief for each scene
-3. **Scene Preview** — generates an AI storyboard showing what each scene looks like: colors, composition, key visual element, and mood
-4. **Transcript Builder** — creates a word-by-word timestamped breakdown of the voiceover
-5. **TRIBE Predictor** — scores every scene on six neural metrics calibrated to real fMRI data
-6. **Insight Writer** — translates those scores into five specific, actionable creative notes
+- 🧠 Which scenes will **hold attention** — and which lose the viewer
+- 💥 What **emotion** each beat triggers in the brain
+- 📝 Exactly **what to rewrite** to make the campaign stronger
 
-A seventh agent — the **Quality Checker** — evaluates the output automatically and reruns any agent that produces incomplete or low-quality results.
+It is built on **TRIBE v2** — a foundation model released by Meta's AI research team trained on over **1,000 hours of fMRI brain scans** from 720 subjects. NeuroDraft wraps that science into a workflow any creative team can use.
 
 ---
 
-## The output
+## 🚀 The Live Pipeline — 7 AI Agents, Simultaneously
+
+When you paste an ad script into NeuroDraft, **6 AI agents fire simultaneously**, evaluated by a 7th:
+
+<div align="center">
+
+```
+                    ┌────────────────────────────────────────────┐
+                    │          You submit your script             │
+                    └──────────────────┬─────────────────────────┘
+                                       │
+              ┌────────────────────────┴─────────────────────────┐
+              │                                                   │
+    ┌─────────▼──────────┐                          ┌────────────▼─────────┐
+    │  1. Script Expander │                          │ 2. Transcript Builder │
+    │  Scenes + timing    │                          │  Word-level breakdown │
+    └─────────┬──────────┘                          └────────────┬─────────┘
+              │                                                   │
+    ┌─────────▼──────────┐                                       │
+    │  3. Scene Director  │                                       │
+    │  Visual brief/scene │                                       │
+    └─────────┬──────────┘                                       │
+              │                                                   │
+    ┌─────────▼──────────┐                                       │
+    │  4. Scene Preview   │                                       │
+    │  AI storyboards     │                                       │
+    └─────────┬──────────┘                                       │
+              │                                                   │
+              └───────────────────────┬───────────────────────────┘
+                                      │
+                           ┌──────────▼──────────┐
+                           │  5. TRIBE Predictor  │
+                           │  6 neural metrics    │
+                           └──────────┬──────────┘
+                                      │
+                           ┌──────────▼──────────┐
+                           │  6. Insight Writer   │
+                           │  5 creative notes    │
+                           └──────────┬──────────┘
+                                      │
+                           ┌──────────▼──────────┐
+                           │  7. Quality Checker  │
+                           │  Auto-reruns if bad  │
+                           └─────────────────────┘
+```
+
+</div>
+
+---
+
+## 🖥️ Landing Page
+
+<div align="center">
+
+![Features Section](docs/screenshots/02_features.png)
+
+![How It Works](docs/screenshots/03_how_it_works.png)
+
+![Metrics Explained](docs/screenshots/04_metrics.png)
+
+</div>
+
+---
+
+## 📊 The Dashboard — What You Get
+
+<div align="center">
+
+![App Dashboard](docs/screenshots/05_dashboard.png)
+
+![Neural Scores](docs/screenshots/06_neural_scores.png)
+
+![Creative Insights](docs/screenshots/07_insights.png)
+
+</div>
 
 For every ad script you analyze, you get:
 
-- **A neural grade** (A through F) and a benchmark percentile vs. other ads
-- **Six metric scores** per scene: visual attention, sound impact, conscious focus, emotional response, memory strength, and overall engagement
-- **An engagement arc** showing whether attention rises, falls, or is volatile
-- **Five creative insights** — each with a plain-English finding and a specific recommendation for what to change
-- **A rewrite suggestion** for the weakest scene, with before and after
-- **A headline recall test** with three alternative headlines ranked by predicted memory
-- **A quality verification score** showing how reliable the analysis is
-- **A downloadable PDF report** with everything above
+| Output | Description |
+|--------|-------------|
+| 🎓 **Neural Grade** | A–F letter grade + benchmark percentile vs. other ads |
+| 📈 **6 Metric Scores** | Visual attention, sound impact, conscious focus, emotional response, memory strength, overall engagement |
+| 〰️ **Engagement Arc** | Does attention rise, fall, or stay volatile across scenes? |
+| 💡 **5 Creative Insights** | Each with a finding + concrete recommendation |
+| ✍️ **Scene Rewrite** | The weakest scene rewritten, with before/after |
+| 🔤 **Headline Recall Test** | 3 alternative headlines ranked by predicted memory |
+| ✅ **Quality Score** | How reliable is this analysis? |
+| 📄 **PDF Report** | 4-page download — no server needed |
 
 ---
 
-## How the neural scoring works
+## 🧠 The Six Neural Metrics
 
-NeuroDraft does not have a real fMRI machine. What it has is a prediction model calibrated against TRIBE v2's documented output patterns.
+<div align="center">
 
-TRIBE v2 (Meta Research, 2026) is an open-source model that was trained to predict what a human brain scan would look like in response to a video, audio track, and text simultaneously. It was trained on real brain scans from 720 volunteers watching movies and podcasts for over 1,000 hours.
-
-NeuroDraft uses that model's documented behavior — the patterns it learned about which stimuli activate which brain regions — to score your script. When the predictor sees a scene with unexpected humor, it knows from the fMRI literature that this activates the amygdala and encodes strongly in the hippocampus (memory). When it sees a slow, undifferentiated product shot, it scores visual attention and prefrontal engagement lower.
-
-The scores are predictions, not ground truth. They are directional signal, not scientific certainty. NeuroDraft is honest about this throughout the UI.
-
----
-
-## The six metrics explained
-
-| Metric | Brain region | What it measures |
+| Metric | Brain Region | What It Measures |
 |--------|-------------|------------------|
-| Visual attention | Visual cortex | How much the eye is drawn to and holds on the image |
-| Sound impact | Auditory cortex | How well the audio reinforces the message and emotion |
-| Conscious focus | Prefrontal cortex | Whether the viewer is actively following the story |
-| Emotional response | Amygdala | The strength of the emotional reaction — positive or negative |
-| Memory strength | Hippocampus | How likely this scene is to be remembered the next day |
-| Overall engagement | Whole brain | Combined signal: is the brain active and receptive? |
+| 👁️ **Visual Attention** | Visual cortex | How much the eye is drawn to and holds on the image |
+| 🔊 **Sound Impact** | Auditory cortex | How well audio reinforces the message and emotion |
+| 🎯 **Conscious Focus** | Prefrontal cortex | Whether the viewer is actively following the story |
+| ❤️ **Emotional Response** | Amygdala | Strength of emotional reaction — positive or negative |
+| 🗄️ **Memory Strength** | Hippocampus | How likely this scene is remembered the next day |
+| ⚡ **Overall Engagement** | Whole brain | Is the brain active and receptive? |
 
-Scores above 0.70 are strong. Below 0.40 is a warning zone. The heatmap shows you every scene across all six metrics simultaneously.
+</div>
+
+> Scores above **0.70** are strong. Below **0.40** is a warning zone.
 
 ---
 
-## Project structure
+## 🌟 Social Proof & CTA
+
+<div align="center">
+
+![Social Proof](docs/screenshots/08_social.png)
+
+![CTA Section](docs/screenshots/09_cta.png)
+
+![Footer](docs/screenshots/10_footer.png)
+
+</div>
+
+---
+
+## 🗂️ Project Structure
 
 ```text
 NeuroDraft/
-├── app/                    # The SaaS analysis tool (Next.js 15)
+├── app/                         # SaaS analysis tool (Next.js 15, port 3000)
 │   ├── app/
-│   │   ├── analyze/        # Main workspace — paste script, run analysis
-│   │   └── results/[id]/   # Full results deep-dive
+│   │   ├── analyze/             # Main workspace — paste script, run analysis
+│   │   └── results/[id]/        # Full results deep-dive page
 │   ├── api/
-│   │   ├── pipeline/       # Start pipeline, SSE status stream
-│   │   └── agents/         # Six agent routes + evaluator
+│   │   ├── pipeline/            # Start pipeline, SSE status stream
+│   │   └── agents/              # Six agent routes + evaluator
 │   ├── components/
-│   │   └── pipeline/       # AgentCard, NeuralHeatmap, InsightPanel, etc.
+│   │   └── pipeline/            # AgentCard, NeuralHeatmap, InsightPanel, etc.
 │   └── lib/
-│       ├── pipeline.ts      # Background orchestrator
-│       ├── event-bus.ts     # SSE in-memory event bus
-│       ├── results-store.ts # In-memory result storage
-│       └── groq.ts          # Groq client + retry logic
+│       ├── pipeline.ts          # Background orchestrator
+│       ├── event-bus.ts         # SSE in-memory event bus
+│       ├── results-store.ts     # In-memory result storage
+│       └── groq.ts              # Groq client + retry logic
 │
-└── landing/                # Marketing site (Next.js 15, separate deploy)
+└── landing/                     # Marketing site (Next.js 15, port 3001)
     ├── app/
-    │   └── page.tsx        # Full marketing page
+    │   └── page.tsx             # Full marketing page
     └── components/
         ├── Hero.tsx
+        ├── HeroAppMockup.tsx    # Interactive dashboard preview
         ├── Features.tsx
         ├── HowItWorks.tsx
-        ├── DemoPreview.tsx
+        ├── SocialProofMarquee.tsx
         └── CTA.tsx
 ```
 
 ---
 
-## Setup — local development
+## ⚡ Quick Start
 
 ### Prerequisites
 
-- Node.js 18 or higher
-- A Groq API key (free at [console.groq.com](https://console.groq.com))
-- A Google Gemini API key (free at [aistudio.google.com](https://aistudio.google.com))
+- Node.js 18+
+- [Groq API key](https://console.groq.com) (free)
+- [Google Gemini API key](https://aistudio.google.com) (free)
 
-### Step 1 — Clone and install
+### 1 — Clone & Install
 
 ```bash
 git clone https://github.com/PRAFULREDDYM/NeuroDraft.git
 cd NeuroDraft
-
-# Install all workspace packages (root has npm workspaces for app + landing)
 npm install
 ```
 
-### Step 2 — Environment variables (where they live)
-
-| File | Purpose |
-|------|---------|
-| **`app/.env.local`** | **Your real keys** for the analysis app (`GROQ_API_KEY`, `GEMINI_API_KEY`, public URLs). **Not in Git** — create it locally. |
-| **`landing/.env.local`** | Public URLs for the marketing site. **Not in Git.** |
-| **`app/.env.example`** | Template you copy from (safe to commit). |
-| **`landing/.env.example`** | Template for the landing app (safe to commit). |
-| **`app/.env.production` / `landing/.env.production`** | Deploy-time **public** URLs only; committed for Vercel-style setups. |
-
-From the repo root:
+### 2 — Environment Variables
 
 ```bash
 cp app/.env.example app/.env.local
 cp landing/.env.example landing/.env.local
 ```
 
-Edit **`app/.env.local`** and replace the placeholder API keys with Groq and Gemini keys from [console.groq.com](https://console.groq.com) and [Google AI Studio](https://aistudio.google.com).
+Edit `app/.env.local`:
 
-### Step 3 — Run both apps
-
-Open two terminal windows:
-
-**Terminal 1 — the app:**
-```bash
-cd NeuroDraft/app
-npm run dev
+```env
+GROQ_API_KEY=your_groq_key_here
+GEMINI_API_KEY=your_gemini_key_here
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_LANDING_URL=http://localhost:3001
 ```
 
-**Terminal 2 — the landing page:**
+| File | Purpose |
+|------|---------|
+| `app/.env.local` | Real API keys — **never commit** |
+| `landing/.env.local` | Public URLs for the marketing site |
+| `app/.env.example` | Safe template to copy from |
+
+### 3 — Run Both Apps
+
+**From the root (recommended):**
+
 ```bash
-cd NeuroDraft/landing
-npm run dev
+# Terminal 1
+npm run dev:app       # → http://localhost:3000
+
+# Terminal 2
+npm run dev:landing   # → http://localhost:3001
 ```
 
-### Step 4 — Try it
+### 4 — Try It
 
-1. Open `http://localhost:3001` to see the landing page
-2. Click "Analyze your script free →" — it takes you to the app
+1. Open `http://localhost:3001` → landing page
+2. Click **"Analyze your script free →"**
 3. Paste any ad script (minimum 15 words)
-4. Click "Analyze Brain Response"
-5. Watch the six agent cards light up and process
-6. The scene preview, neural heatmap, and insights appear as each agent completes
-7. Click "Download report" to get the PDF
+4. Click **"Analyze Brain Response"**
+5. Watch the 6 agent cards light up in real-time
+6. Read your neural grade, heatmap, and insights
+7. Click **"Download report"** for the PDF
 
 ---
 
-## Testing with a good script
+## 🧪 Test Script
 
-This script is a good test because it has strong humor and emotional hooks — the neural scores should show high emotional arousal and memory encoding:
+Use this script to verify your setup — it has strong humor and emotional hooks, so neural scores should be high:
 
-> A man wakes up to an alarm that won't stop. He knocks it off the table. It still rings. A Red Bull can rolls into frame. Text: Mornings exist. On a packed train, squeezed between two large people, he tilts his entire body sideways to sip his Red Bull. Text: You still have to show up. In a meeting that could have been an email, a woman sips Red Bull under the table like contraband. Text: It won't end. But you will survive it. Voiceover: Red Bull. Life is relentless. So are we.
-
-Expected output: Neural grade A or strong B, emotional arousal above 0.75, memory encoding above 0.70 on the humor scenes.
-
----
-
-## Deployment
-
-### Option A — Vercel (recommended, free tier works)
-
-**Deploy the app:**
-```bash
-cd NeuroDraft/app
-npx vercel
+```
+A man wakes up to an alarm that won't stop. He knocks it off the table. 
+It still rings. A Red Bull can rolls into frame. Text: Mornings exist. 
+On a packed train, squeezed between two large people, he tilts his entire 
+body sideways to sip his Red Bull. Text: You still have to show up. 
+In a meeting that could have been an email, a woman sips Red Bull under 
+the table like contraband. Text: It won't end. But you will survive it. 
+Voiceover: Red Bull. Life is relentless. So are we.
 ```
 
-Then add:
+**Expected output:** Neural grade **A** or strong **B**, emotional arousal above **0.75**, memory encoding above **0.70** on the humor scenes.
 
-- `GROQ_API_KEY`
-- `GEMINI_API_KEY`
-- `NEXT_PUBLIC_LANDING_URL`
-- `NEXT_PUBLIC_APP_URL`
+---
 
-**Deploy the landing page:**
-```bash
-cd NeuroDraft/landing
-npx vercel
+## 📡 How the Pipeline Works — Technically
+
 ```
-
-Then add:
-
-- `NEXT_PUBLIC_APP_URL`
-- `NEXT_PUBLIC_LANDING_URL`
-
-**Important:** After both are deployed, update each app's env var to point to the other's production URL, then redeploy both once more.
-
-### One important limitation on Vercel free tier
-
-Vercel's Hobby plan has a 60-second timeout on API routes. The full pipeline usually takes 25-45 seconds. If you consistently hit timeouts, upgrade to Vercel Pro or self-host on Railway/Render.
-
-### Option B — Self-hosted (Railway, Render, Fly.io)
-
-All three platforms work with standard Next.js. Set the same environment variables listed above.
-
----
-
-## API keys — what they cost
-
-| Service | What it's used for | Free tier |
-|---------|-------------------|-----------|
-| Groq | Script expansion, transcript, neural scoring, insights | Generous developer free tier |
-| Google Gemini | Scene storyboard generation | Good enough for light testing |
-
-For production use, expect Groq costs of roughly cents per analysis, depending on traffic and prompt sizes.
-
----
-
-## How the pipeline works technically
-
-```text
 User submits script
        │
        ▼
 POST /api/pipeline/start
        │
-       ├─── [PARALLEL] Script expansion
-       ├─── [PARALLEL] Transcript builder
+       ├─── [PARALLEL] Script expansion   (Groq LLaMA 3)
+       ├─── [PARALLEL] Transcript builder (Groq LLaMA 3)
        ▼
-Scene preview generation
+Scene preview generation                  (Gemini)
        ▼
-TRIBE scoring
+TRIBE scoring                             (Groq LLaMA 3)
        ▼
-Insight writing
+Insight writing                           (Groq LLaMA 3)
        ▼
-Quality verification
+Quality verification                      (Groq LLaMA 3)
        ▼
-Result stored in memory → /results/[runId]
+Result stored → /results/[runId]
 ```
 
-The frontend connects to `/api/pipeline/status?runId=xxx` via Server-Sent Events (SSE). Every agent emits progress events through this stream, which is why the agent cards animate in real time as the pipeline runs.
+The frontend connects to `/api/pipeline/status?runId=xxx` via **Server-Sent Events (SSE)**. Every agent emits progress events through this stream — that's why agent cards animate in real time.
 
-**Note on persistence:** Results are stored in memory (a Node.js Map). That means results are lost if the server restarts. For production, replace `results-store.ts` with Redis or a database.
-
----
-
-## Known limitations
-
-1. **No real TRIBE v2 GPU inference** — The neural scores are LLM-calibrated predictions based on TRIBE v2's documented output patterns, not actual fMRI model inference.
-2. **In-memory storage** — Results disappear on server restart.
-3. **No user authentication** — This is an MVP and demo-friendly build.
-4. **Scene preview uses storyboard mode** — This is intentional for a free-tier friendly workflow.
+> **Note on persistence:** Results are stored in a Node.js `Map`. Results are lost on server restart. For production, swap `results-store.ts` with Redis or a DB.
 
 ---
 
-## What TRIBE v2 actually is
+## 🚀 Deployment
 
-TRIBE v2 (TRImodal Brain Encoder, version 2) is a foundation model released by Meta's research team.
+### Option A — Vercel (Recommended)
 
-It was trained on over 1,000 hours of brain scan data from 720 volunteers who watched movies and listened to podcasts while inside MRI machines. The model learned to predict what brain activity patterns would occur in response to combinations of video, audio, and text.
+```bash
+# Deploy the app
+cd NeuroDraft/app && npx vercel
+
+# Deploy the landing
+cd NeuroDraft/landing && npx vercel
+```
+
+**Environment variables to add in Vercel dashboard:**
+
+| Variable | Required in |
+|----------|-------------|
+| `GROQ_API_KEY` | app |
+| `GEMINI_API_KEY` | app |
+| `NEXT_PUBLIC_APP_URL` | both |
+| `NEXT_PUBLIC_LANDING_URL` | both |
+
+> ⚠️ Vercel Hobby has a **60-second** API timeout. The pipeline runs in **25–45 seconds**. Upgrade to Pro if you consistently hit timeouts.
+
+### Option B — Self-Hosted (Railway / Render / Fly.io)
+
+All three platforms support standard Next.js. Set the same environment variables above.
+
+---
+
+## 🔌 MCP Integration (Claude Desktop + Cursor)
+
+NeuroDraft exposes **3 tools** via the Model Context Protocol:
+
+| Tool | What it does |
+|------|-------------|
+| `analyze_ad_script` | Runs the full pipeline, returns a markdown report |
+| `get_analysis_result` | Retrieves a completed analysis by run ID |
+| `compare_scripts` | Runs two scripts in parallel, returns a side-by-side winner |
+
+### Setup
+
+```bash
+# 1. Make sure the app is running
+cd app && npm run dev
+
+# 2. Build the MCP server
+cd app && npm run mcp:build
+```
+
+Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "neurodraft": {
+      "command": "node",
+      "args": ["/absolute/path/to/NeuroDraft/app/mcp/dist/server.js"],
+      "env": {
+        "NEURODRAFT_URL": "http://localhost:3000"
+      }
+    }
+  }
+}
+```
+
+Then ask Claude:
+> *"Analyze this ad script using NeuroDraft: [paste script]"*
+> *"Compare these two campaign versions and tell me which has stronger memory encoding"*
+
+---
+
+## 💰 API Costs
+
+| Service | Used For | Free Tier |
+|---------|----------|-----------|
+| **Groq** | Script expansion, transcript, scoring, insights | Generous developer free tier |
+| **Gemini** | Scene storyboard generation | Good for light testing |
+
+Production cost: roughly **cents per analysis** depending on script length and traffic.
+
+---
+
+## ⚠️ Known Limitations
+
+1. **No real TRIBE v2 GPU inference** — Scores are LLM-calibrated predictions based on TRIBE v2's documented output patterns, not actual fMRI model inference
+2. **In-memory storage** — Results disappear on server restart
+3. **No user authentication** — MVP and demo-friendly build
+4. **Scene preview uses storyboard mode** — Intentional for free-tier compatibility
+
+---
+
+## 🤝 Contributing
+
+This is an MVP built for speed. Contributions welcome:
+
+- 🗄️ Replace in-memory storage with Redis
+- 🧬 Add real TRIBE inference via a GPU endpoint
+- 👤 Add user accounts + history
+- 🎨 Richer preview generation
+- 📊 Extend the neural schema
+
+Pull requests welcome. Open an issue first for large changes.
+
+---
+
+## 📖 What TRIBE v2 Actually Is
+
+**TRIBE v2** (TRImodal Brain Encoder, version 2) is a foundation model released by Meta's research team, trained on **1,000+ hours of brain scan data** from **720 volunteers** who watched movies and listened to podcasts inside MRI machines.
+
+The model learned to predict what brain activity patterns occur in response to combinations of **video, audio, and text simultaneously**.
 
 NeuroDraft uses TRIBE v2 as the scientific basis for its scoring system — specifically the documented relationships between humor, surprise, pacing, emotional intensity, and memory formation.
 
 ---
 
-## Contributing
+<div align="center">
 
-This is an MVP built for speed. If you want to contribute:
+<img src="https://readme-typing-svg.demolab.com?font=Outfit&weight=600&size=18&pause=2000&color=A855F7&center=true&vCenter=true&width=600&lines=NeuroDraft+is+not+affiliated+with+Meta.;TRIBE+v2+is+Meta+research.;NeuroDraft+is+an+independent+product.;Built+with+%E2%9D%A4%EF%B8%8F+by+Praful+Reddy" alt="Footer" />
 
-- Replace in-memory storage with Redis
-- Add real TRIBE inference via a GPU endpoint
-- Add user accounts
-- Add richer preview generation
-- Extend the neural schema
-
-Pull requests welcome.
-
----
-
-*NeuroDraft is not affiliated with Meta. TRIBE v2 is Meta research. NeuroDraft is an independent product inspired by and calibrated against published research.*
+</div>

@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowUp, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface FloatingActionsProps {
   onDownloadPdf?: () => Promise<void> | void;
@@ -21,40 +22,55 @@ export function FloatingActions(props: FloatingActionsProps): JSX.Element {
   const showDownload = typeof props.onDownloadPdf === "function";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="fixed bottom-5 right-5 z-40 flex flex-col gap-2 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)]/95 p-2 shadow-2xl shadow-black/30 backdrop-blur-sm"
-      aria-label="Floating actions"
-    >
-      {showDownload ? (
-        <Button
-          type="button"
-          size="sm"
-          className="justify-start gap-2"
-          onClick={() => {
-            void props.onDownloadPdf?.();
-          }}
-          disabled={props.downloadDisabled ?? false}
-          aria-label="Download PDF report"
-        >
-          <Download className="h-4 w-4" />
-          {props.isDownloadingPdf ? "Preparing PDF..." : "Download PDF"}
-        </Button>
-      ) : null}
-
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        className="justify-start gap-2"
-        onClick={handleScrollTop}
-        aria-label="Scroll back to top"
+    <TooltipProvider>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="fixed bottom-6 right-6 z-40 flex flex-col gap-3"
+        aria-label="Floating actions"
       >
-        <ArrowUp className="h-4 w-4" />
-        Top
-      </Button>
-    </motion.div>
+        {showDownload ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="icon"
+                variant="default"
+                className="h-10 w-10 shrink-0 rounded-full bg-[var(--accent-primary)] text-black shadow-lg hover:scale-105 active:scale-95 transition-transform"
+                onClick={() => {
+                  void props.onDownloadPdf?.();
+                }}
+                disabled={props.downloadDisabled ?? false}
+              >
+                <Download className="h-4.5 w-4.5" />
+                <span className="sr-only">Download PDF Report</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border)]">
+              {props.isDownloadingPdf ? "Preparing PDF..." : "Download PDF Report"}
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="h-10 w-10 shrink-0 rounded-full bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-primary)] shadow-lg hover:scale-105 active:scale-95 transition-transform"
+              onClick={handleScrollTop}
+            >
+              <ArrowUp className="h-4.5 w-4.5" />
+              <span className="sr-only">Scroll to top</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border)]">
+            Back to top
+          </TooltipContent>
+        </Tooltip>
+      </motion.div>
+    </TooltipProvider>
   );
 }

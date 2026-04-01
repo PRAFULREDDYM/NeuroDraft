@@ -1,19 +1,20 @@
+import jsPDF from "jspdf";
+
 import type { InsightResult, NeuralPrediction, PipelineResult } from "@/lib/types";
 
-interface PdfSection {
-  title: string;
-  lines: string[];
-}
-
-export interface PdfReport {
-  title: string;
-  category: string;
-  runId: string;
-  generatedAt: string;
-  grade?: string;
-  sections: PdfSection[];
-  footer?: string;
-}
+const C = {
+  bg: [10, 10, 10] as [number, number, number],
+  surface: [17, 17, 17] as [number, number, number],
+  elevated: [26, 26, 26] as [number, number, number],
+  accent: [0, 255, 136] as [number, number, number],
+  accentBg: [13, 32, 22] as [number, number, number],
+  danger: [239, 68, 68] as [number, number, number],
+  amber: [249, 115, 22] as [number, number, number],
+  white: [248, 250, 252] as [number, number, number],
+  muted: [136, 136, 136] as [number, number, number],
+  dim: [85, 85, 85] as [number, number, number],
+  border: [30, 30, 30] as [number, number, number]
+};
 
 export interface AnalysisPdfSnapshot {
   runId: string;
@@ -23,414 +24,584 @@ export interface AnalysisPdfSnapshot {
   script?: string | null;
   prediction?: NeuralPrediction | null;
   insights?: InsightResult | null;
+  evaluation?: PipelineResult["evaluation"] | null;
 }
 
-function asciiSafe(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[^\x20-\x7E]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function rgb(pdf: jsPDF, color: [number, number, number], mode: "fill" | "stroke" | "text"): void {
+  if (mode === "fill") pdf.setFillColor(color[0], color[1], color[2]);
+  if (mode === "stroke") pdf.setDrawColor(color[0], color[1], color[2]);
+  if (mode === "text") pdf.setTextColor(color[0], color[1], color[2]);
 }
 
-function escapePdfText(value: string): string {
-  return asciiSafe(value).replace(/[\\()]/g, "\\$&");
+function newPage(pdf: jsPDF): void {
+  pdf.addPage();
+  rgb(pdf, C.bg, "fill");
+  pdf.rect(0, 0, 210, 297, "F");
 }
 
-function wrapText(value: string, maxLength: number): string[] {
-  const words = asciiSafe(value).split(" ").filter(Boolean);
-
-  if (words.length === 0) {
-    return [""];
-  }
-
-  const lines: string[] = [];
-  let current = words[0] ?? "";
-
-  for (let index = 1; index < words.length; index += 1) {
-    const word = words[index];
-    if (!word) {
-      continue;
-    }
-
-    const nextLine = `${current} ${word}`;
-    if (nextLine.length > maxLength) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = nextLine;
-    }
-  }
-
-  lines.push(current);
-  return lines;
+function scoreBar(pdf: jsPDF, x: number, y: number, w: number, h: number, value: number): void {
+  rgb(pdf, C.elevated, "fill");
+  pdf.roundedRect(x, y, w, h, h / 2, h / 2, "F");
+  const fillW = w * Math.min(1, Math.max(0, value));
+  const fillColor: [number, number, number] = value >= 0.7 ? C.accent : value >= 0.45 ? C.amber : C.danger;
+  rgb(pdf, fillColor, "fill");
+  pdf.roundedRect(x, y, Math.max(fillW, h), h, h / 2, h / 2, "F");
 }
 
-function formatPercent(value: number): string {
-  return `${Math.round(value * 100)}%`;
+function gradeColor(grade: string): [number, number, number] {
+  if (grade === "A") return C.accent;
+  if (grade === "B") return [34, 197, 94];
+  if (grade === "C") return C.amber;
+  if (grade === "D" || grade === "F") return C.danger;
+  return C.muted;
 }
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value
-    : date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+function impactColor(impact: string): [number, number, number] {
+  if (impact === "high") return C.accent;
+  if (impact === "medium") return C.amber;
+  return C.muted;
 }
 
-function toSlug(value: string): string {
-  const safe = asciiSafe(value)
+function addWrappedText(
+  pdf: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  size: number,
+  color: [number, number, number],
+  bold = false
+): number {
+  pdf.setFontSize(size);
+  rgb(pdf, color, "text");
+  pdf.setFont("helvetica", bold ? "bold" : "normal");
+  const lines = pdf.splitTextToSize(text || "", maxWidth);
+  pdf.text(lines, x, y);
+  return lines.length * size * 0.42;
+}
+
+function toFileSafe(value: string): string {
+  return (value || "analysis")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-  return safe || "analysis";
-}
-
-function buildReportFromResult(result: PipelineResult): PdfReport {
-  const title = result.title ?? result.expanded.title;
-  const category = result.ad_category ?? result.expanded.brand_category;
-  const sections: PdfSection[] = [
-    {
-      title: "Campaign summary",
-      lines: [
-        `Category: ${category}`,
-        `Duration: ${result.expanded.duration_seconds}s`,
-        `Target emotion: ${result.expanded.target_emotion}`,
-        `Scenes analyzed: ${result.neural.segments.length}`,
-        `Neural grade: ${result.neural.overall.neural_grade}`,
-        `Mean engagement: ${formatPercent(result.neural.overall.mean_engagement)}`,
-        `Memory strength: ${formatPercent(result.neural.overall.memory_strength)}`,
-        `Benchmark percentile: ${result.neural.overall.benchmark_percentile}th`,
-        result.neural.overall.standout_signal ? `Standout signal: ${result.neural.overall.standout_signal}` : ""
-      ].filter(Boolean)
-    },
-    {
-      title: "Overall verdict",
-      lines: [
-        result.insights.overall_verdict,
-        `Engagement arc: ${result.neural.overall.engagement_arc}`,
-        result.insights.engagement_arc_explanation
-      ]
-    },
-    {
-      title: "Scene-by-scene readout",
-      lines: result.neural.segments.flatMap((segment) => [
-        `Scene ${segment.scene_id} (${segment.time_start}s-${segment.time_end}s)`,
-        `Visual ${formatPercent(segment.neural_scores.visual_cortex_engagement)} | Sound ${formatPercent(segment.neural_scores.auditory_cortex_engagement)} | Attention ${formatPercent(segment.neural_scores.prefrontal_attention)} | Emotion ${formatPercent(segment.neural_scores.amygdala_emotional_arousal)} | Memory ${formatPercent(segment.neural_scores.hippocampal_memory_encoding)} | Overall ${formatPercent(segment.neural_scores.overall_engagement)}`,
-        `Peak: ${segment.peak_moment}`,
-        `Drop: ${segment.drop_moment}`,
-        `Recall probability: ${formatPercent(segment.predicted_recall_probability)}`
-      ])
-    },
-    {
-      title: "Creative direction",
-      lines: result.insights.insights.flatMap((insight) => [
-        `${insight.title} (${insight.impact} impact, Scene ${insight.scene_ref})`,
-        `Finding: ${insight.finding}`,
-        `Recommendation: ${insight.recommendation}`
-      ])
-    }
-  ];
-
-  if (result.insights.rewrite_suggestion) {
-    sections.push({
-      title: "Rewrite suggestion",
-      lines: [
-        `Scene ${result.insights.rewrite_suggestion.scene_id}`,
-        `Original: ${result.insights.rewrite_suggestion.original_line}`,
-        `Improved: ${result.insights.rewrite_suggestion.rewritten_line}`,
-        `Reason: ${result.insights.rewrite_suggestion.reason}`
-      ]
-    });
-  }
-
-  if (result.insights.headline_test.length > 0) {
-    sections.push({
-      title: "Headline recall test",
-      lines: result.insights.headline_test.map(
-        (entry) => `${entry.headline} - ${entry.predicted_recall_score}% recall. ${entry.why}`
-      )
-    });
-  }
-
-  if (result.evaluation) {
-    sections.push({
-      title: "Quality verification",
-      lines: [
-        `Quality score: ${result.evaluation.score}/100`,
-        result.evaluation.summary,
-        ...result.evaluation.neural_issues.map((issue) => `Neural issue: ${issue}`),
-        ...result.evaluation.insights_issues.map((issue) => `Insight issue: ${issue}`)
-      ]
-    });
-  }
-
-  return {
-    title,
-    category,
-    runId: result.runId,
-    generatedAt: result.completedAt,
-    grade: result.neural.overall.neural_grade,
-    sections,
-    footer: "Generated by NeuroDraft · TRIBE v2-calibrated prediction report"
-  };
-}
-
-function buildReportFromAnalysis(snapshot: AnalysisPdfSnapshot): PdfReport {
-  const title = snapshot.title?.trim() || "Live analysis snapshot";
-  const category = snapshot.category?.trim() || "General";
-  const sections: PdfSection[] = [];
-
-  if (snapshot.script?.trim()) {
-    sections.push({
-      title: "Source script",
-      lines: wrapText(snapshot.script, 90)
-    });
-  }
-
-  if (snapshot.prediction) {
-    sections.push({
-      title: "Neural summary",
-      lines: [
-        `Neural grade: ${snapshot.prediction.overall.neural_grade}`,
-        `Mean engagement: ${formatPercent(snapshot.prediction.overall.mean_engagement)}`,
-        `Memory strength: ${formatPercent(snapshot.prediction.overall.memory_strength)}`,
-        `Attention retention: ${formatPercent(snapshot.prediction.overall.attention_retention)}`,
-        `Benchmark percentile: ${snapshot.prediction.overall.benchmark_percentile}th`
-      ]
-    });
-  }
-
-  if (snapshot.insights) {
-    sections.push({
-      title: "Creative notes",
-      lines: snapshot.insights.insights.flatMap((insight) => [
-        insight.title,
-        insight.finding,
-        `Recommendation: ${insight.recommendation}`
-      ])
-    });
-  }
-
-  return {
-    title,
-    category,
-    runId: snapshot.runId,
-    generatedAt: snapshot.generatedAt ?? new Date().toISOString(),
-    grade: snapshot.prediction?.overall.neural_grade,
-    sections,
-    footer: "Generated from the current NeuroDraft workspace"
-  };
-}
-
-type DrawCommand =
-  | { kind: "text"; x: number; y: number; size: number; color: [number, number, number]; text: string; font?: "regular" | "bold" }
-  | { kind: "rect"; x: number; y: number; width: number; height: number; fill: [number, number, number] };
-
-function renderCommands(commands: DrawCommand[]): string {
-  const chunks: string[] = [];
-
-  for (const command of commands) {
-    if (command.kind === "rect") {
-      const [r, g, b] = command.fill.map((value) => (value / 255).toFixed(3));
-      chunks.push(`${r} ${g} ${b} rg`);
-      chunks.push(`${command.x} ${command.y} ${command.width} ${command.height} re f`);
-      continue;
-    }
-
-    const [r, g, b] = command.color.map((value) => (value / 255).toFixed(3));
-    const fontName = command.font === "bold" ? "/F2" : "/F1";
-    chunks.push("BT");
-    chunks.push(`${fontName} ${command.size} Tf`);
-    chunks.push(`${r} ${g} ${b} rg`);
-    chunks.push(`1 0 0 1 ${command.x} ${command.y} Tm`);
-    chunks.push(`(${escapePdfText(command.text)}) Tj`);
-    chunks.push("ET");
-  }
-
-  return chunks.join("\n");
-}
-
-function buildPdfBlob(report: PdfReport): Blob {
-  const pageWidth = 612;
-  const pageHeight = 792;
-  const margin = 48;
-  const lineHeight = 14;
-  const commandsByPage: DrawCommand[][] = [];
-  let commands: DrawCommand[] = [];
-  let cursorY = pageHeight - margin;
-
-  const ensureSpace = (height: number): void => {
-    if (cursorY - height < margin) {
-      commandsByPage.push(commands);
-      commands = [];
-      cursorY = pageHeight - margin;
-    }
-  };
-
-  const addBackground = (): void => {
-    commands.push({ kind: "rect", x: 0, y: 0, width: pageWidth, height: pageHeight, fill: [10, 10, 10] });
-  };
-
-  const addTextBlock = (
-    text: string,
-    options: { size: number; color: [number, number, number]; font?: "regular" | "bold"; maxWidthChars?: number; gapAfter?: number }
-  ): void => {
-    const wrapped = wrapText(text, options.maxWidthChars ?? 88);
-    ensureSpace(wrapped.length * (options.size + 4) + (options.gapAfter ?? 0));
-    wrapped.forEach((line) => {
-      commands.push({
-        kind: "text",
-        x: margin,
-        y: cursorY,
-        size: options.size,
-        color: options.color,
-        text: line,
-        font: options.font
-      });
-      cursorY -= options.size + 4;
-    });
-    cursorY -= options.gapAfter ?? 0;
-  };
-
-  addBackground();
-  commands.push({ kind: "rect", x: margin, y: pageHeight - 76, width: pageWidth - margin * 2, height: 1, fill: [0, 255, 136] });
-  commands.push({ kind: "rect", x: margin, y: pageHeight - 110, width: 6, height: 42, fill: [0, 255, 136] });
-  addTextBlock("NeuroDraft", { size: 24, color: [248, 250, 252], font: "bold", gapAfter: 2 });
-  addTextBlock("Neural analysis report", { size: 11, color: [148, 163, 184], maxWidthChars: 50, gapAfter: 10 });
-  addTextBlock(report.title, { size: 18, color: [248, 250, 252], font: "bold", gapAfter: 4 });
-  addTextBlock(`${report.category} · Grade ${report.grade ?? "—"} · ${formatDate(report.generatedAt)}`, {
-    size: 10,
-    color: [148, 163, 184],
-    gapAfter: 12
-  });
-
-  const cards = [
-    { label: "Neural grade", value: report.grade ?? "—" },
-    {
-      label: "Scenes",
-      value: (() => {
-        const sceneSection = report.sections.find((section) => section.title === "Scene-by-scene readout");
-        const count = sceneSection ? sceneSection.lines.filter((line) => line.startsWith("Scene ")).length : 0;
-        return `${count}`;
-      })()
-    },
-    {
-      label: "Insights",
-      value: (() => {
-        const insightSection = report.sections.find((section) => section.title === "Creative direction");
-        const count = insightSection ? insightSection.lines.filter((line) => !line.startsWith("Finding:") && !line.startsWith("Recommendation:")).length : 0;
-        return `${count}`;
-      })()
-    }
-  ];
-
-  const cardY = cursorY - 8;
-  const cardWidth = (pageWidth - margin * 2 - 16) / 3;
-  cards.forEach((card, index) => {
-    const x = margin + index * (cardWidth + 8);
-    commands.push({ kind: "rect", x, y: cardY - 54, width: cardWidth, height: 48, fill: [17, 17, 17] });
-    commands.push({ kind: "text", x: x + 10, y: cardY - 18, size: 9, color: [85, 85, 85], text: card.label.toUpperCase(), font: "bold" });
-    commands.push({ kind: "text", x: x + 10, y: cardY - 40, size: 18, color: [0, 255, 136], text: card.value, font: "bold" });
-  });
-  cursorY = cardY - 72;
-
-  for (const section of report.sections) {
-    addTextBlock(section.title, { size: 13, color: [248, 250, 252], font: "bold", gapAfter: 4 });
-    section.lines.forEach((line) => {
-      if (line.trim().length === 0) {
-        cursorY -= 6;
-        return;
-      }
-      addTextBlock(line, { size: 10, color: [170, 170, 170], maxWidthChars: 92, gapAfter: 2 });
-    });
-    cursorY -= 8;
-  }
-
-  ensureSpace(32);
-  commands.push({ kind: "rect", x: 0, y: 0, width: pageWidth, height: 24, fill: [17, 17, 17] });
-  commands.push({
-    kind: "text",
-    x: margin,
-    y: 10,
-    size: 8,
-    color: [85, 85, 85],
-    text: report.footer ?? "Generated by NeuroDraft",
-    font: "regular"
-  });
-
-  commandsByPage.push(commands);
-
-  const objects = new Map<number, string>();
-  objects.set(1, "<< /Type /Catalog /Pages 2 0 R >>");
-  const pageObjectNumbers: number[] = [];
-  const fontRegularObject = 3;
-  const fontBoldObject = 4;
-  objects.set(fontRegularObject, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-  objects.set(fontBoldObject, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
-
-  commandsByPage.forEach((pageCommands, pageIndex) => {
-    const contentObjectNumber = 5 + pageIndex * 2;
-    const pageObjectNumber = 6 + pageIndex * 2;
-    pageObjectNumbers.push(pageObjectNumber);
-    const content = renderCommands(pageCommands);
-    objects.set(contentObjectNumber, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
-    objects.set(
-      pageObjectNumber,
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontRegularObject} 0 R /F2 ${fontBoldObject} 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`
-    );
-  });
-
-  objects.set(2, `<< /Type /Pages /Kids [${pageObjectNumbers.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageObjectNumbers.length} >>`);
-
-  const maxObjectNumber = Math.max(...objects.keys());
-  let pdf = "%PDF-1.4\n";
-  const offsets = new Map<number, number>();
-
-  for (let objectNumber = 1; objectNumber <= maxObjectNumber; objectNumber += 1) {
-    const body = objects.get(objectNumber);
-    if (!body) {
-      continue;
-    }
-    offsets.set(objectNumber, pdf.length);
-    pdf += `${objectNumber} 0 obj\n${body}\nendobj\n`;
-  }
-
-  const xrefStart = pdf.length;
-  pdf += `xref\n0 ${maxObjectNumber + 1}\n0000000000 65535 f \n`;
-
-  for (let objectNumber = 1; objectNumber <= maxObjectNumber; objectNumber += 1) {
-    const offset = offsets.get(objectNumber) ?? 0;
-    pdf += `${offset.toString().padStart(10, "0")} 00000 n \n`;
-  }
-
-  pdf += `trailer\n<< /Size ${maxObjectNumber + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
-  return new Blob([pdf], { type: "application/pdf" });
-}
-
-export function createResultPdfReport(result: PipelineResult): PdfReport {
-  return buildReportFromResult(result);
-}
-
-export function createAnalysisPdfReport(snapshot: AnalysisPdfSnapshot): PdfReport {
-  return buildReportFromAnalysis(snapshot);
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim()
+    .replace(/\s+/g, "_")
+    .slice(0, 40) || "analysis";
 }
 
 export function getPdfFileName(title: string | null | undefined, grade: string | null | undefined): string {
-  const base = toSlug(title ?? "analysis");
-  const normalizedGrade = asciiSafe(grade ?? "").replace(/[^A-Za-z0-9]+/g, "").toUpperCase() || "NA";
-  return `${base}_advertisement_${normalizedGrade}.pdf`;
+  const safeTitle = toFileSafe(title ?? "analysis");
+  const safeGrade = (grade ?? "na").replace(/[^a-z0-9]/gi, "").toLowerCase() || "na";
+  return `${safeTitle}_advertisement_${safeGrade}.pdf`;
 }
 
-export async function downloadPdf(report: PdfReport, filename?: string): Promise<void> {
-  const blob = buildPdfBlob(report);
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+function getSegments(result: any): any[] {
+  return result?.neural?.segments ?? result?.prediction?.segments ?? [];
+}
 
-  link.href = objectUrl;
-  link.download = filename?.trim() || getPdfFileName(report.title, report.grade);
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(objectUrl);
+function getInsights(result: any): any[] {
+  return result?.insights?.insights ?? [];
+}
+
+function getOverall(result: any): any {
+  return result?.neural?.overall ?? result?.prediction?.overall ?? {};
+}
+
+function getEvaluation(result: any): PipelineResult["evaluation"] | null {
+  return result?.evaluation ?? null;
+}
+
+function getTitle(result: any): string {
+  return result?.title ?? "Ad Analysis";
+}
+
+function getCategory(result: any): string {
+  return result?.ad_category ?? result?.category ?? "General";
+}
+
+function getScript(result: any): string {
+  return result?.expanded?.full_voiceover_script ?? result?.script ?? "";
+}
+
+function drawCover(pdf: jsPDF, result: any): void {
+  const overall = getOverall(result);
+  const grade = overall?.neural_grade ?? "—";
+  const pct = overall?.benchmark_percentile ?? 0;
+  const mean = Math.round((overall?.mean_engagement ?? 0) * 100);
+  const mem = Math.round((overall?.memory_strength ?? 0) * 100);
+  const attn = Math.round((overall?.attention_retention ?? 0) * 100);
+
+  rgb(pdf, C.bg, "fill");
+  pdf.rect(0, 0, 210, 297, "F");
+  rgb(pdf, C.accent, "fill");
+  pdf.rect(0, 0, 210, 3, "F");
+
+  pdf.setFontSize(9);
+  pdf.setFont("helvetica", "bold");
+  rgb(pdf, C.accent, "text");
+  pdf.text("NEURODRAFT", 16, 22);
+  pdf.setFont("helvetica", "normal");
+  rgb(pdf, C.dim, "text");
+  pdf.text("Neural analysis report", 16, 28);
+
+  rgb(pdf, C.dim, "text");
+  pdf.text(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), 194, 22, { align: "right" });
+  pdf.text(getCategory(result), 194, 28, { align: "right" });
+
+  rgb(pdf, C.border, "stroke");
+  pdf.setLineWidth(0.3);
+  pdf.line(16, 34, 194, 34);
+
+  pdf.setFontSize(28);
+  pdf.setFont("helvetica", "bold");
+  rgb(pdf, C.white, "text");
+  const titleLines = pdf.splitTextToSize(getTitle(result), 178);
+  pdf.text(titleLines, 16, 54);
+
+  const cx = 157;
+  const cy = 90;
+  const r = 28;
+  rgb(pdf, C.surface, "fill");
+  pdf.circle(cx, cy, r, "F");
+  rgb(pdf, gradeColor(grade), "stroke");
+  pdf.setLineWidth(2);
+  pdf.circle(cx, cy, r, "S");
+  pdf.setFontSize(32);
+  pdf.setFont("helvetica", "bold");
+  rgb(pdf, gradeColor(grade), "text");
+  pdf.text(grade, cx, cy + 5, { align: "center" });
+  pdf.setFontSize(7);
+  pdf.setFont("helvetica", "normal");
+  rgb(pdf, C.dim, "text");
+  pdf.text("NEURAL GRADE", cx, cy + r + 7, { align: "center" });
+
+  const stats = [
+    { label: "MEAN ENGAGEMENT", value: `${mean}%` },
+    { label: "MEMORY STRENGTH", value: `${mem}%` },
+    { label: "ATTENTION", value: `${attn}%` },
+    { label: "BENCHMARK", value: `${pct}th pct` }
+  ];
+  const bx = 16;
+  const by = 110;
+  const bw = 40;
+  const bh = 24;
+  const gap = 4;
+  stats.forEach((s, i) => {
+    const x = bx + i * (bw + gap);
+    rgb(pdf, C.surface, "fill");
+    pdf.roundedRect(x, by, bw, bh, 3, 3, "F");
+    pdf.setFontSize(6);
+    pdf.setFont("helvetica", "normal");
+    rgb(pdf, C.dim, "text");
+    pdf.text(s.label, x + bw / 2, by + 7, { align: "center" });
+    pdf.setFontSize(13);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.white, "text");
+    pdf.text(s.value, x + bw / 2, by + 18, { align: "center" });
+  });
+
+  const arc = overall?.engagement_arc ?? "";
+  if (arc) {
+    rgb(pdf, C.accentBg, "fill");
+    pdf.roundedRect(16, 142, 60, 9, 2, 2, "F");
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.accent, "text");
+    pdf.text(`ARC · ${String(arc).toUpperCase()}`, 46, 148, { align: "center" });
+  }
+
+  [
+    { label: "SCENES", value: String(getSegments(result).length) },
+    { label: "INSIGHTS", value: String(getInsights(result).length) }
+  ].forEach((s, i) => {
+    const x = 16 + i * 46;
+    pdf.setFontSize(6);
+    pdf.setFont("helvetica", "normal");
+    rgb(pdf, C.dim, "text");
+    pdf.text(s.label, x, 160);
+    pdf.setFontSize(16);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.white, "text");
+    pdf.text(s.value, x, 170);
+  });
+
+  pdf.setFontSize(7);
+  pdf.setFont("helvetica", "bold");
+  rgb(pdf, C.dim, "text");
+  pdf.text("SOURCE SCRIPT", 16, 186);
+  rgb(pdf, C.border, "stroke");
+  pdf.setLineWidth(0.2);
+  pdf.line(16, 188, 194, 188);
+
+  const scriptLines = pdf.splitTextToSize(getScript(result), 178);
+  pdf.setFontSize(8);
+  pdf.setFont("helvetica", "normal");
+  rgb(pdf, C.muted, "text");
+  pdf.text(scriptLines.slice(0, 12), 16, 195);
+
+  rgb(pdf, C.border, "stroke");
+  pdf.line(16, 283, 194, 283);
+  pdf.setFontSize(7);
+  pdf.setFont("helvetica", "normal");
+  rgb(pdf, C.dim, "text");
+  pdf.text("Generated from the NeuroDraft workspace · Built on TRIBE v2 (Meta Research, 2026)", 16, 289);
+  pdf.text("1", 194, 289, { align: "right" });
+}
+
+function drawHeatmap(pdf: jsPDF, result: any): void {
+  newPage(pdf);
+  rgb(pdf, C.accent, "fill");
+  pdf.rect(16, 16, 3, 12, "F");
+  pdf.setFontSize(14);
+  pdf.setFont("helvetica", "bold");
+  rgb(pdf, C.white, "text");
+  pdf.text("Neural heatmap", 22, 25);
+  pdf.setFontSize(8);
+  pdf.setFont("helvetica", "normal");
+  rgb(pdf, C.dim, "text");
+  pdf.text("Scene-by-scene scores across all six brain metrics", 22, 31);
+
+  const metrics = [
+    { key: "visual_cortex_engagement", label: "Visual" },
+    { key: "auditory_cortex_engagement", label: "Auditory" },
+    { key: "prefrontal_attention", label: "Attention" },
+    { key: "amygdala_emotional_arousal", label: "Emotion" },
+    { key: "hippocampal_memory_encoding", label: "Memory" },
+    { key: "overall_engagement", label: "Overall" }
+  ];
+
+  let y = 44;
+  const segments = getSegments(result);
+  pdf.setFontSize(6);
+  pdf.setFont("helvetica", "bold");
+  rgb(pdf, C.dim, "text");
+  pdf.text("SCENE", 16, y);
+  pdf.text("TIME", 38, y);
+  metrics.forEach((m, i) => pdf.text(m.label.toUpperCase(), 62 + i * 22, y, { align: "center" }));
+  pdf.text("GRADE", 182, y, { align: "center" });
+  y += 3;
+  rgb(pdf, C.border, "stroke");
+  pdf.line(16, y, 194, y);
+  y += 5;
+
+  segments.forEach((seg: any, si: number) => {
+    if (y > 265) {
+      newPage(pdf);
+      y = 24;
+    }
+    const rowH = 18;
+    if (si % 2 === 0) {
+      rgb(pdf, C.surface, "fill");
+      pdf.rect(16, y - 3, 178, rowH, "F");
+    }
+
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.white, "text");
+    pdf.text(`Scene ${seg.scene_id}`, 16, y + 4);
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "normal");
+    rgb(pdf, C.dim, "text");
+    pdf.text(`${seg.time_start}–${seg.time_end}s`, 38, y + 4);
+
+    metrics.forEach((m, mi) => {
+      const val = seg.neural_scores?.[m.key] ?? 0;
+      const bx = 52 + mi * 22;
+      const by = y + 1;
+      scoreBar(pdf, bx, by, 18, 4, val);
+      pdf.setFontSize(6);
+      rgb(pdf, C.muted, "text");
+      pdf.text(`${Math.round(val * 100)}%`, bx + 9, by + 8, { align: "center" });
+    });
+
+    const overall = seg.neural_scores?.overall_engagement ?? 0;
+    const sceneGrade = overall >= 0.78 ? "A" : overall >= 0.6 ? "B" : overall >= 0.45 ? "C" : "D";
+    rgb(pdf, C.elevated, "fill");
+    pdf.roundedRect(178, y, 16, 8, 2, 2, "F");
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, gradeColor(sceneGrade), "text");
+    pdf.text(sceneGrade, 186, y + 5.5, { align: "center" });
+
+    y += rowH + 2;
+    if (seg.peak_moment) {
+      pdf.setFontSize(6);
+      pdf.setFont("helvetica", "normal");
+      rgb(pdf, C.accent, "text");
+      pdf.text(pdf.splitTextToSize(`↑ ${seg.peak_moment}`, 120).slice(0, 1), 18, y);
+      y += 4;
+    }
+    if (seg.drop_moment) {
+      rgb(pdf, C.danger, "text");
+      pdf.text(pdf.splitTextToSize(`↓ ${seg.drop_moment}`, 120).slice(0, 1), 18, y);
+      y += 6;
+    }
+    y += 4;
+  });
+
+  pdf.setFontSize(7);
+  rgb(pdf, C.dim, "text");
+  pdf.text("2", 194, 289, { align: "right" });
+}
+
+function drawReadout(pdf: jsPDF, result: any): void {
+  newPage(pdf);
+  rgb(pdf, C.accent, "fill");
+  pdf.rect(16, 16, 3, 12, "F");
+  pdf.setFontSize(14);
+  pdf.setFont("helvetica", "bold");
+  rgb(pdf, C.white, "text");
+  pdf.text("Neural readout", 22, 25);
+  pdf.setFontSize(8);
+  pdf.setFont("helvetica", "normal");
+  rgb(pdf, C.dim, "text");
+  pdf.text("TRIBE v2 scores translated into plain creative direction", 22, 31);
+
+  const translations: Record<string, { name: string; low: string; mid: string; high: string }> = {
+    visual_cortex_engagement: { name: "Visual attention", low: "Visuals are not holding the eye.", mid: "Adequate visual engagement.", high: "Strong visual pull — viewers are locked on." },
+    auditory_cortex_engagement: { name: "Sound impact", low: "Audio is not reinforcing the message.", mid: "Audio is present but not amplifying.", high: "Sound and visuals work together — cohesive." },
+    prefrontal_attention: { name: "Conscious attention", low: "Viewers likely zone out here.", mid: "Attention is fragile — any distraction loses the viewer.", high: "Viewers are actively following the story." },
+    amygdala_emotional_arousal: { name: "Emotional response", low: "Scene is emotionally flat.", mid: "Mild emotional engagement.", high: "Viewers are feeling something — warmth, excitement, or humor." },
+    hippocampal_memory_encoding: { name: "Memory strength", low: "Viewers will likely not recall this tomorrow.", mid: "Moderate recall likelihood.", high: "This scene will be remembered." },
+    overall_engagement: { name: "Overall brain engagement", low: "Brain is in passive mode.", mid: "Ad is watched but not fully absorbed.", high: "High engagement — brain is active and receptive." }
+  };
+
+  const segments = getSegments(result);
+  const averages: Record<string, number> = {};
+  Object.keys(translations).forEach((k) => {
+    averages[k] = segments.length
+      ? segments.reduce((sum: number, s: any) => sum + (s.neural_scores?.[k] ?? 0), 0) / segments.length
+      : 0;
+  });
+
+  let y = 44;
+  const cardW = 86;
+  const cardH = 32;
+  const gap = 6;
+  let col = 0;
+
+  Object.entries(translations).forEach(([key, def]) => {
+    const val = averages[key] ?? 0;
+    const level = val >= 0.7 ? "high" : val >= 0.45 ? "mid" : "low";
+    const levelLabel = val >= 0.7 ? "STRONG" : val >= 0.45 ? "FAIR" : "WEAK";
+    const levelColor: [number, number, number] = val >= 0.7 ? C.accent : val >= 0.45 ? C.amber : C.danger;
+    const x = 16 + col * (cardW + gap);
+
+    rgb(pdf, C.surface, "fill");
+    pdf.roundedRect(x, y, cardW, cardH, 3, 3, "F");
+    rgb(pdf, levelColor, "fill");
+    pdf.roundedRect(x + cardW - 20, y + 4, 16, 5, 1, 1, "F");
+    pdf.setFontSize(5);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(levelLabel, x + cardW - 12, y + 7.5, { align: "center" });
+
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.white, "text");
+    pdf.text(def.name, x + 4, y + 11);
+    scoreBar(pdf, x + 4, y + 14, cardW - 8, 3, val);
+    pdf.setFontSize(6);
+    pdf.setFont("helvetica", "normal");
+    rgb(pdf, C.dim, "text");
+    pdf.text(`${Math.round(val * 100)}%`, x + cardW - 4, y + 17, { align: "right" });
+    rgb(pdf, C.muted, "text");
+    pdf.text(pdf.splitTextToSize(def[level as "low" | "mid" | "high"], cardW - 8).slice(0, 2), x + 4, y + 22);
+
+    col += 1;
+    if (col >= 2) {
+      col = 0;
+      y += cardH + gap;
+    }
+  });
+
+  y += 16;
+  if (result?.insights?.overall_verdict) {
+    rgb(pdf, C.accentBg, "fill");
+    pdf.roundedRect(16, y, 178, 2, 1, 1, "F");
+    y += 6;
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.accent, "text");
+    pdf.text("Overall verdict", 16, y);
+    y += 6;
+    y += addWrappedText(pdf, result.insights.overall_verdict, 16, y, 178, 9, C.white) + 8;
+    if (result.insights.engagement_arc_explanation) {
+      pdf.setFontSize(7);
+      pdf.setFont("helvetica", "bold");
+      rgb(pdf, C.dim, "text");
+      pdf.text(`Engagement arc · ${String(getOverall(result)?.engagement_arc ?? "").toUpperCase()}`, 16, y);
+      y += 5;
+      addWrappedText(pdf, result.insights.engagement_arc_explanation, 16, y, 178, 8, C.muted);
+      y += 12;
+    }
+  }
+
+  const evaluation = getEvaluation(result);
+  if (evaluation?.score !== undefined) {
+    const qScore = evaluation.score;
+    const qColor = qScore >= 80 ? C.accent : qScore >= 60 ? C.amber : C.danger;
+    rgb(pdf, C.surface, "fill");
+    pdf.roundedRect(16, y, 178, 14, 3, 3, "F");
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.dim, "text");
+    pdf.text("QUALITY VERIFICATION", 20, y + 6);
+    pdf.setFontSize(11);
+    rgb(pdf, qColor, "text");
+    pdf.text(`${qScore}/100`, 194, y + 9, { align: "right" });
+    pdf.setFontSize(6);
+    pdf.setFont("helvetica", "normal");
+    rgb(pdf, C.dim, "text");
+    pdf.text(qScore >= 80 ? "All checks passed" : qScore >= 60 ? "Accepted with minor issues" : "Below threshold — indicative only", 20, y + 11);
+  }
+
+  pdf.setFontSize(7);
+  rgb(pdf, C.dim, "text");
+  pdf.text("3", 194, 289, { align: "right" });
+}
+
+function drawInsights(pdf: jsPDF, result: any): void {
+  newPage(pdf);
+  rgb(pdf, C.accent, "fill");
+  pdf.rect(16, 16, 3, 12, "F");
+  pdf.setFontSize(14);
+  pdf.setFont("helvetica", "bold");
+  rgb(pdf, C.white, "text");
+  pdf.text("Creative direction", 22, 25);
+  pdf.setFontSize(8);
+  pdf.setFont("helvetica", "normal");
+  rgb(pdf, C.dim, "text");
+  pdf.text("Five insights with findings and specific recommendations", 22, 31);
+
+  let y = 44;
+  getInsights(result).forEach((insight: any) => {
+    if (y > 240) {
+      newPage(pdf);
+      y = 24;
+    }
+
+    const cardH = 36;
+    const iColor = impactColor(insight.impact ?? "low");
+    rgb(pdf, C.surface, "fill");
+    pdf.roundedRect(16, y, 178, cardH, 3, 3, "F");
+    rgb(pdf, iColor, "fill");
+    pdf.roundedRect(16, y, 3, cardH, 1, 1, "F");
+    rgb(pdf, iColor, "fill");
+    pdf.roundedRect(22, y + 4, 18, 5, 1, 1, "F");
+    pdf.setFontSize(5);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(String(insight.impact ?? "").toUpperCase(), 31, y + 7, { align: "center" });
+    pdf.setFontSize(5);
+    pdf.setFont("helvetica", "normal");
+    rgb(pdf, C.dim, "text");
+    pdf.text(insight.metric_affected ?? "", 44, y + 7);
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.white, "text");
+    pdf.text(insight.title ?? "", 22, y + 16);
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "normal");
+    rgb(pdf, C.muted, "text");
+    pdf.text(pdf.splitTextToSize(insight.finding ?? "", 170).slice(0, 1), 22, y + 23);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, iColor, "text");
+    pdf.text(pdf.splitTextToSize(`→ ${insight.recommendation ?? ""}`, 170).slice(0, 1), 22, y + 29);
+    y += cardH + 4;
+  });
+
+  const rw = result?.insights?.rewrite_suggestion;
+  if (rw && y < 250) {
+    y += 4;
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.white, "text");
+    pdf.text("Rewrite suggestion", 16, y);
+    y += 6;
+    rgb(pdf, C.surface, "fill");
+    pdf.roundedRect(16, y, 178, 30, 3, 3, "F");
+    pdf.setFontSize(6);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.danger, "text");
+    pdf.text("ORIGINAL", 20, y + 7);
+    pdf.setFont("helvetica", "normal");
+    rgb(pdf, C.muted, "text");
+    pdf.text(pdf.splitTextToSize(`"${rw.original_line ?? ""}"`, 170).slice(0, 1), 20, y + 13);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.accent, "text");
+    pdf.text("IMPROVED", 20, y + 20);
+    pdf.setFont("helvetica", "normal");
+    rgb(pdf, C.white, "text");
+    pdf.text(pdf.splitTextToSize(`"${rw.rewritten_line ?? ""}"`, 170).slice(0, 1), 20, y + 26);
+    y += 34;
+  }
+
+  const ht = result?.insights?.headline_test ?? [];
+  if (ht.length > 0 && y < 260) {
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "bold");
+    rgb(pdf, C.white, "text");
+    pdf.text("Headline recall test", 16, y);
+    y += 6;
+    [...ht].sort((a: any, b: any) => b.predicted_recall_score - a.predicted_recall_score).forEach((h: any, i: number) => {
+      if (y > 275) return;
+      rgb(pdf, C.surface, "fill");
+      pdf.roundedRect(16, y, 178, 12, 2, 2, "F");
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "bold");
+      rgb(pdf, i === 0 ? C.accent : C.muted, "text");
+      pdf.text(String(h.predicted_recall_score), 22, y + 8);
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", i === 0 ? "bold" : "normal");
+      rgb(pdf, i === 0 ? C.white : C.muted, "text");
+      pdf.text(h.headline ?? "", 34, y + 8);
+      if (i === 0) {
+        pdf.setFontSize(5);
+        rgb(pdf, C.accent, "text");
+        pdf.text("BEST RECALL", 190, y + 7, { align: "right" });
+      }
+      y += 15;
+    });
+  }
+
+  pdf.setFontSize(7);
+  rgb(pdf, C.dim, "text");
+  pdf.text("4", 194, 289, { align: "right" });
+}
+
+function buildSnapshotResult(snapshot: AnalysisPdfSnapshot): any {
+  return {
+    title: snapshot.title ?? "Ad Analysis",
+    category: snapshot.category ?? "General",
+    prediction: snapshot.prediction,
+    insights: snapshot.insights,
+    evaluation: snapshot.evaluation,
+    script: snapshot.script ?? "",
+    generatedAt: snapshot.generatedAt ?? new Date().toISOString()
+  };
+}
+
+export function createResultPdfReport(result: PipelineResult): PipelineResult {
+  return result;
+}
+
+export function createAnalysisPdfReport(snapshot: AnalysisPdfSnapshot): any {
+  return buildSnapshotResult(snapshot);
+}
+
+export async function downloadPdf(input: any, filename?: string): Promise<void> {
+  await generatePDF(input, filename);
+}
+
+export async function generatePDF(result: any, filename?: string): Promise<void> {
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  drawCover(pdf, result);
+  drawHeatmap(pdf, result);
+  drawReadout(pdf, result);
+  drawInsights(pdf, result);
+
+  const safeName = filename ?? getPdfFileName(getTitle(result), getOverall(result)?.neural_grade ?? null);
+  const finalFilename = safeName.endsWith(".pdf") ? safeName : `${safeName}.pdf`;
+  pdf.save(finalFilename);
 }

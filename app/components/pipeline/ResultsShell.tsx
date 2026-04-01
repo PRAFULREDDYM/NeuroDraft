@@ -20,7 +20,7 @@ import { NeuralTranslator } from "@/components/pipeline/NeuralTranslator";
 import { SceneSummary } from "@/components/pipeline/SceneSummary";
 import { VideoPreview } from "@/components/pipeline/VideoPreview";
 import { createDemoAudioResult, createDemoDirectedScenes, createDemoInsights, createDemoNeuralPrediction, createDemoScriptExpansion, createDemoVideoResult } from "@/lib/mock-data";
-import { createResultPdfReport, downloadPdf, getPdfFileName } from "@/lib/generate-pdf";
+import { createResultPdfReport, generatePDF, getPdfFileName } from "@/lib/generate-pdf";
 import { usePipelineStore } from "@/lib/pipeline-store";
 import type { PipelineResult, ResultsResponse } from "@/lib/types";
 
@@ -114,7 +114,7 @@ export function ResultsShell(props: { initialResult?: PipelineResult | null; run
     try {
       const report = createResultPdfReport(result);
       const filename = getPdfFileName(report.title, result.neural.overall.neural_grade);
-      await downloadPdf(report, filename);
+      await generatePDF(report, filename);
     } finally {
       setIsDownloadingPdf(false);
     }
