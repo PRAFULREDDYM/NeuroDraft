@@ -108,31 +108,31 @@ NeuroDraft/
 ### Step 1 — Clone and install
 
 ```bash
-git clone https://github.com/your-username/neurodraft.git
+git clone https://github.com/PRAFULREDDYM/NeuroDraft.git
 cd NeuroDraft
 
-# Install dependencies for both apps
-cd app && npm install
-cd ../landing && npm install
+# Install all workspace packages (root has npm workspaces for app + landing)
+npm install
 ```
 
-### Step 2 — Set up environment variables
+### Step 2 — Environment variables (where they live)
 
-Create `/app/.env.local`:
+| File | Purpose |
+|------|---------|
+| **`app/.env.local`** | **Your real keys** for the analysis app (`GROQ_API_KEY`, `GEMINI_API_KEY`, public URLs). **Not in Git** — create it locally. |
+| **`landing/.env.local`** | Public URLs for the marketing site. **Not in Git.** |
+| **`app/.env.example`** | Template you copy from (safe to commit). |
+| **`landing/.env.example`** | Template for the landing app (safe to commit). |
+| **`app/.env.production` / `landing/.env.production`** | Deploy-time **public** URLs only; committed for Vercel-style setups. |
 
-```env
-GROQ_API_KEY=gsk_your_key_here
-GEMINI_API_KEY=AIza_your_key_here
-NEXT_PUBLIC_LANDING_URL=http://localhost:3001
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+From the repo root:
+
+```bash
+cp app/.env.example app/.env.local
+cp landing/.env.example landing/.env.local
 ```
 
-Create `/landing/.env.local`:
-
-```env
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_LANDING_URL=http://localhost:3001
-```
+Edit **`app/.env.local`** and replace the placeholder API keys with Groq and Gemini keys from [console.groq.com](https://console.groq.com) and [Google AI Studio](https://aistudio.google.com).
 
 ### Step 3 — Run both apps
 
@@ -141,15 +141,13 @@ Open two terminal windows:
 **Terminal 1 — the app:**
 ```bash
 cd NeuroDraft/app
-source ../.venv/bin/activate
 npm run dev
 ```
 
 **Terminal 2 — the landing page:**
 ```bash
 cd NeuroDraft/landing
-source ../.venv/bin/activate
-npm run dev -- --port 3001
+npm run dev
 ```
 
 ### Step 4 — Try it

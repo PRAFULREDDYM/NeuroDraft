@@ -10,3 +10,5 @@ coverage
 .env.*.local
 npm-debug.log*
 *.log
+*.tsbuildinfo
+.vercel
